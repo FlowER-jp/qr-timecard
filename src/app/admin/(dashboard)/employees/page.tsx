@@ -17,7 +17,6 @@ export default function EmployeesPage() {
   const [editTarget, setEditTarget] = useState<Employee | null>(null);
   const [form, setForm] = useState({ employeeCode: "", name: "", pin: "" });
   const [error, setError] = useState("");
-  const [qrTarget, setQrTarget] = useState<Employee | null>(null);
 
   const fetchEmployees = async () => {
     const res = await fetch("/api/admin/employees");
@@ -66,6 +65,17 @@ export default function EmployeesPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isActive: !emp.isActive }),
     });
+    fetchEmployees();
+  };
+
+  const handleDelete = async (emp: Employee) => {
+    if (!confirm(`「${emp.name}」を削除しますか？\n勤怠記録もすべて削除されます。`)) return;
+    const res = await fetch(`/api/admin/employees/${emp.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json();
+      alert(data.error || "削除に失敗しました");
+      return;
+    }
     fetchEmployees();
   };
 
@@ -171,30 +181,6 @@ export default function EmployeesPage() {
         </div>
       )}
 
-      {/* QRコードモーダル */}
-      {qrTarget && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setQrTarget(null)}>
-          <div className="bg-white rounded-2xl p-8 max-w-xs w-full text-center" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-bold text-gray-800 mb-1">{qrTarget.name}</h3>
-            <p className="text-xs text-gray-400 mb-4">{qrTarget.employeeCode}</p>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={`/api/qrcode/${qrTarget.id}`}
-              alt="QR Code"
-              className="mx-auto border rounded-lg w-64 h-64"
-            />
-            <p className="text-xs text-gray-400 mt-3">印刷してご利用ください</p>
-            <button
-              onClick={() => window.open(`/api/qrcode/${qrTarget.id}`, "_blank")}
-              className="mt-3 w-full py-2 bg-gray-100 rounded-lg text-sm text-gray-700 hover:bg-gray-200"
-            >
-              別タブで開く（印刷用）
-            </button>
-            <button onClick={() => setQrTarget(null)} className="mt-2 w-full py-2 text-sm text-gray-400">閉じる</button>
-          </div>
-        </div>
-      )}
-
       {/* 従業員一覧 */}
       <div className="bg-white rounded-xl shadow overflow-hidden">
         <table className="w-full text-sm">
@@ -218,11 +204,11 @@ export default function EmployeesPage() {
                 </td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex justify-end gap-2">
-                    <button onClick={() => setQrTarget(emp)} className="px-3 py-1 text-xs bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100">QR</button>
                     <button onClick={() => openEdit(emp)} className="px-3 py-1 text-xs bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100">編集</button>
                     <button onClick={() => handleToggleActive(emp)} className="px-3 py-1 text-xs bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100">
                       {emp.isActive ? "無効化" : "有効化"}
                     </button>
+                    <button onClick={() => handleDelete(emp)} className="px-3 py-1 text-xs bg-red-50 text-red-600 rounded-lg hover:bg-red-100">削除</button>
                   </div>
                 </td>
               </tr>

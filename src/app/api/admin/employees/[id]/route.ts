@@ -3,6 +3,27 @@ import { prisma } from "@/lib/prisma";
 import { getAdminSession } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getAdminSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id } = await params;
+  const empId = Number(id);
+
+  try {
+    await prisma.timeCorrection.deleteMany({ where: { employeeId: empId } });
+    await prisma.timeRecord.deleteMany({ where: { employeeId: empId } });
+    await prisma.employee.delete({ where: { id: empId } });
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
+
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
