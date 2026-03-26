@@ -1,0 +1,67 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model AdminUser {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String
+  createdAt DateTime @default(now())
+}
+
+model Employee {
+  id           Int              @id @default(autoincrement())
+  employeeCode String           @unique
+  name         String
+  pin          String
+  isActive     Boolean          @default(true)
+  createdAt    DateTime         @default(now())
+  timeRecords  TimeRecord[]
+  corrections  TimeCorrection[]
+}
+
+model TimeRecord {
+  id           Int              @id @default(autoincrement())
+  employee     Employee         @relation(fields: [employeeId], references: [id])
+  employeeId   Int
+  date         String           // YYYY-MM-DD (JST)
+  clockIn      DateTime?
+  clockOut     DateTime?
+  breakMinutes Int              @default(0)
+  dailyReport  String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  corrections  TimeCorrection[]
+
+  @@unique([employeeId, date])
+}
+
+model TimeCorrection {
+  id               Int        @id @default(autoincrement())
+  timeRecord       TimeRecord @relation(fields: [timeRecordId], references: [id])
+  timeRecordId     Int
+  employee         Employee   @relation(fields: [employeeId], references: [id])
+  employeeId       Int
+  prevClockIn      DateTime?
+  prevClockOut     DateTime?
+  prevBreakMinutes Int
+  prevDailyReport  String?
+  newClockIn       DateTime?
+  newClockOut      DateTime?
+  newBreakMinutes  Int
+  newDailyReport   String?
+  reason           String?
+  correctedAt      DateTime   @default(now())
+}
+
+model ClosingSetting {
+  id         Int      @id @default(autoincrement())
+  closingDay Int      // 1-28 (day of month)
+  updatedAt  DateTime @updatedAt
+}

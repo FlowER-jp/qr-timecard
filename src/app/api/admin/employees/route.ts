@@ -1,0 +1,48 @@
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getAdminSession } from "@/lib/auth";
+import bcrypt from "bcryptjs";
+
+export async function GET() {
+  const session = await getAdminSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const employees = await prisma.employee.findMany({
+    orderBy: { employeeCode: "asc" },
+    select: {
+      id: true,
+      employeeCode: true,
+      name: true,
+      isActive: true,
+      createdAt: true,
+    },
+  });
+
+  return NextResponse.json({ employees });
+}
+
+export async function POST(req: NextRequest) {
+  const session = await getAdminSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { employeeCode, name, pin } = await req.json();
+
+  if (!employeeCode || !name || !pin) {
+    return NextResponse.json({ error: "必須項目が不足しています" }, { status: 400 });
+  }
+  if (pin.length < 4) {
+    return NextResponse.json({ error: "PINは4桁以上で設定してください" }, { status: 400 });
+  }
+
+  const existing = await prisma.employee.findUnique({ where: { employeeCode } });
+  if (existing) {
+    return NextResponse.json({ error: "社員コードが重複しています" }, { status: 400 });
+  }
+
+  const hashedPin = await bcrypt.hash(pin, 10);
+  const employee = await prisma.employee.create({
+    data: { employeeCode, name, pin: hashedPin },
+  });
+
+  return NextResponse.json({ ok: true, employee });
+}
