@@ -12,7 +12,7 @@ export async function GET(
   }
 
   const { employeeId } = await params;
-  const baseUrl = process.env.NEXTAUTH_URL || req.nextUrl.origin;
+  const baseUrl = req.nextUrl.origin;
   const url = `${baseUrl}/clock/${employeeId}`;
 
   const svg = await QRCode.toString(url, {

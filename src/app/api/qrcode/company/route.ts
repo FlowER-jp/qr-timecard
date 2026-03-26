@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const baseUrl = process.env.NEXTAUTH_URL || req.nextUrl.origin;
+  const baseUrl = req.nextUrl.origin;
   const url = `${baseUrl}/clock`;
 
   const svg = await QRCode.toString(url, {
