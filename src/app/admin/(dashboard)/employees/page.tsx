@@ -76,7 +76,7 @@ export default function EmployeesPage() {
       alert(data.error || "削除に失敗しました");
       return;
     }
-    fetchEmployees();
+    setEmployees(prev => prev.filter(e => e.id !== emp.id));
   };
 
   const openEdit = (emp: Employee) => {
