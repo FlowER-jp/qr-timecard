@@ -311,9 +311,6 @@ export default function ClockPage() {
             >
               {loading ? "記録中..." : "退勤する"}
             </button>
-            <button onClick={handleReset} className="w-full mt-2 py-2 text-sm text-gray-400 hover:text-gray-600">
-              別の人が使う
-            </button>
           </div>
         )}
 
