@@ -83,9 +83,11 @@ model Payroll {
   baseAmount   Int
   nightMinutes    Int      @default(0)
   nightAmount     Int      @default(0)
-  overtimeMinutes Int      @default(0)
-  overtimeAmount  Int      @default(0)
-  incentive       Int      @default(0)
+  overtimeMinutes     Int      @default(0)
+  overtimeAmount      Int      @default(0)
+  highOvertimeMinutes Int      @default(0)
+  highOvertimeAmount  Int      @default(0)
+  incentive           Int      @default(0)
   totalAmount  Int
   note         String?
   createdAt    DateTime @default(now())

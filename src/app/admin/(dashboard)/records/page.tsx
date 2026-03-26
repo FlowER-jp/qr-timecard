@@ -162,6 +162,8 @@ export default function RecordsPage() {
         nightAmount: breakdown.nightPremiumAmount,
         overtimeMinutes: breakdown.overtimeMinutes,
         overtimeAmount: breakdown.overtimePremiumAmount,
+        highOvertimeMinutes: breakdown.highOvertimeMinutes,
+        highOvertimeAmount: breakdown.highOvertimePremiumAmount,
         incentive: inc,
         note: payrollNote || null,
       }),
@@ -178,7 +180,7 @@ export default function RecordsPage() {
   const hasWage = isMonthly ? !!selectedEmployee?.monthlyWage : !!selectedEmployee?.hourlyWage;
   const breakdown = selectedEmployee && hasWage
     ? calcPayrollBreakdown(
-        records,
+        records.map(r => ({ ...r, date: r.date })),
         effectiveHourlyRate,
         selectedEmployee.nightShiftEnabled,
         selectedEmployee.overtimeEnabled,
@@ -283,7 +285,19 @@ export default function RecordsPage() {
                 <div className="bg-orange-50 rounded-lg px-3 py-2 text-sm">
                   <span className="font-medium text-orange-700">残業割増：</span>
                   <span className="text-orange-600 ml-2">
-                    {fmtMins(breakdown.overtimeMinutes)} × +25% ＝ +¥{breakdown.overtimePremiumAmount.toLocaleString()}
+                    {fmtMins(breakdown.overtimeMinutes)} × +25%
+                    {breakdown.weeklyOvertimeMinutes > 0 && (
+                      <span className="text-gray-400 ml-1">（うち週次 {fmtMins(breakdown.weeklyOvertimeMinutes)}）</span>
+                    )}
+                    {" ＝ "}+¥{breakdown.overtimePremiumAmount.toLocaleString()}
+                  </span>
+                </div>
+              )}
+              {breakdown.highOvertimeMinutes > 0 && (
+                <div className="bg-red-50 rounded-lg px-3 py-2 text-sm">
+                  <span className="font-medium text-red-700">高残業割増（60h超）：</span>
+                  <span className="text-red-600 ml-2">
+                    {fmtMins(breakdown.highOvertimeMinutes)} × 追加+25% ＝ +¥{breakdown.highOvertimePremiumAmount.toLocaleString()}
                   </span>
                 </div>
               )}
