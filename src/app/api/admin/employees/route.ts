@@ -13,6 +13,7 @@ export async function GET() {
       id: true,
       employeeCode: true,
       name: true,
+      hourlyWage: true,
       isActive: true,
       createdAt: true,
     },
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
     const session = await getAdminSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { employeeCode, name, pin } = await req.json();
+    const { employeeCode, name, pin, hourlyWage } = await req.json();
 
     if (!employeeCode || !name || !pin) {
       return NextResponse.json({ error: "必須項目が不足しています" }, { status: 400 });
@@ -42,7 +43,12 @@ export async function POST(req: NextRequest) {
 
     const hashedPin = await bcrypt.hash(pin, 10);
     const employee = await prisma.employee.create({
-      data: { employeeCode, name, pin: hashedPin },
+      data: {
+        employeeCode,
+        name,
+        pin: hashedPin,
+        hourlyWage: hourlyWage ? Number(hourlyWage) : null,
+      },
     });
 
     return NextResponse.json({ ok: true, employee });

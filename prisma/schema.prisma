@@ -20,10 +20,12 @@ model Employee {
   employeeCode String           @unique
   name         String
   pin          String
+  hourlyWage   Int?
   isActive     Boolean          @default(true)
   createdAt    DateTime         @default(now())
   timeRecords  TimeRecord[]
   corrections  TimeCorrection[]
+  payrolls     Payroll[]
 }
 
 model TimeRecord {
@@ -64,4 +66,20 @@ model ClosingSetting {
   id         Int      @id @default(autoincrement())
   closingDay Int      // 1-28 (day of month)
   updatedAt  DateTime @updatedAt
+}
+
+model Payroll {
+  id          Int      @id @default(autoincrement())
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  employeeId  Int
+  periodStart String   // YYYY-MM-DD
+  periodEnd   String   // YYYY-MM-DD
+  workMinutes Int
+  baseAmount  Int
+  incentive   Int      @default(0)
+  totalAmount Int
+  note        String?
+  createdAt   DateTime @default(now())
+
+  @@unique([employeeId, periodStart, periodEnd])
 }

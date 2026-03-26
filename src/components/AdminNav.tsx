@@ -10,6 +10,7 @@ export default function AdminNav({ username }: { username: string }) {
   const links = [
     { href: "/admin/employees", label: "従業員管理" },
     { href: "/admin/records", label: "勤怠一覧" },
+    { href: "/admin/payroll", label: "給与管理" },
     { href: "/admin/settings", label: "設定" },
   ];
 

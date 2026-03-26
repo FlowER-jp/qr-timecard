@@ -6,6 +6,7 @@ type Employee = {
   id: number;
   employeeCode: string;
   name: string;
+  hourlyWage: number | null;
   isActive: boolean;
   createdAt: string;
 };
@@ -15,7 +16,7 @@ export default function EmployeesPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState<Employee | null>(null);
-  const [form, setForm] = useState({ employeeCode: "", name: "", pin: "" });
+  const [form, setForm] = useState({ employeeCode: "", name: "", pin: "", hourlyWage: "" });
   const [error, setError] = useState("");
 
   const fetchEmployees = async () => {
@@ -37,7 +38,7 @@ export default function EmployeesPage() {
     });
     const data = await res.json();
     if (!res.ok) { setError(data.error); return; }
-    setForm({ employeeCode: "", name: "", pin: "" });
+    setForm({ employeeCode: "", name: "", pin: "", hourlyWage: "" });
     setShowForm(false);
     fetchEmployees();
   };
@@ -46,7 +47,7 @@ export default function EmployeesPage() {
     e.preventDefault();
     if (!editTarget) return;
     setError("");
-    const payload: Record<string, unknown> = { name: form.name };
+    const payload: Record<string, unknown> = { name: form.name, hourlyWage: form.hourlyWage || null };
     if (form.pin) payload.pin = form.pin;
     const res = await fetch(`/api/admin/employees/${editTarget.id}`, {
       method: "PUT",
@@ -81,7 +82,7 @@ export default function EmployeesPage() {
 
   const openEdit = (emp: Employee) => {
     setEditTarget(emp);
-    setForm({ employeeCode: emp.employeeCode, name: emp.name, pin: "" });
+    setForm({ employeeCode: emp.employeeCode, name: emp.name, pin: "", hourlyWage: emp.hourlyWage?.toString() ?? "" });
     setError("");
   };
 
@@ -92,7 +93,7 @@ export default function EmployeesPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold text-gray-800">従業員管理</h1>
         <button
-          onClick={() => { setShowForm(true); setForm({ employeeCode: "", name: "", pin: "" }); setError(""); }}
+          onClick={() => { setShowForm(true); setForm({ employeeCode: "", name: "", pin: "", hourlyWage: "" }); setError(""); }}
           className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition"
         >
           + 従業員追加
@@ -103,7 +104,7 @@ export default function EmployeesPage() {
       {showForm && (
         <div className="bg-white rounded-xl shadow p-5 mb-6">
           <h2 className="font-bold text-gray-700 mb-4">新規従業員登録</h2>
-          <form onSubmit={handleCreate} className="grid grid-cols-3 gap-3">
+          <form onSubmit={handleCreate} className="grid grid-cols-4 gap-3">
             <div>
               <label className="block text-xs text-gray-600 mb-1">社員コード</label>
               <input
@@ -135,8 +136,18 @@ export default function EmployeesPage() {
                 required
               />
             </div>
-            {error && <p className="col-span-3 text-red-500 text-sm">{error}</p>}
-            <div className="col-span-3 flex gap-2">
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">時給（円）</label>
+              <input
+                type="number"
+                value={form.hourlyWage}
+                onChange={(e) => setForm({ ...form, hourlyWage: e.target.value })}
+                placeholder="1000"
+                className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+              />
+            </div>
+            {error && <p className="col-span-4 text-red-500 text-sm">{error}</p>}
+            <div className="col-span-4 flex gap-2">
               <button type="submit" className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600">登録</button>
               <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200">キャンセル</button>
             </div>
@@ -148,7 +159,7 @@ export default function EmployeesPage() {
       {editTarget && (
         <div className="bg-white rounded-xl shadow p-5 mb-6">
           <h2 className="font-bold text-gray-700 mb-4">{editTarget.name} を編集</h2>
-          <form onSubmit={handleUpdate} className="grid grid-cols-3 gap-3">
+          <form onSubmit={handleUpdate} className="grid grid-cols-4 gap-3">
             <div>
               <label className="block text-xs text-gray-600 mb-1">社員コード（変更不可）</label>
               <input value={editTarget.employeeCode} disabled className="w-full border rounded-lg p-2 text-sm bg-gray-50 text-gray-400" />
@@ -172,8 +183,18 @@ export default function EmployeesPage() {
                 className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
               />
             </div>
-            {error && <p className="col-span-3 text-red-500 text-sm">{error}</p>}
-            <div className="col-span-3 flex gap-2">
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">時給（円）</label>
+              <input
+                type="number"
+                value={form.hourlyWage}
+                onChange={(e) => setForm({ ...form, hourlyWage: e.target.value })}
+                placeholder="1000"
+                className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+              />
+            </div>
+            {error && <p className="col-span-4 text-red-500 text-sm">{error}</p>}
+            <div className="col-span-4 flex gap-2">
               <button type="submit" className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600">更新</button>
               <button type="button" onClick={() => setEditTarget(null)} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200">キャンセル</button>
             </div>
@@ -188,6 +209,7 @@ export default function EmployeesPage() {
             <tr>
               <th className="px-4 py-3 text-left">社員コード</th>
               <th className="px-4 py-3 text-left">氏名</th>
+              <th className="px-4 py-3 text-left">時給</th>
               <th className="px-4 py-3 text-left">状態</th>
               <th className="px-4 py-3 text-right">操作</th>
             </tr>
@@ -197,6 +219,7 @@ export default function EmployeesPage() {
               <tr key={emp.id} className={emp.isActive ? "" : "opacity-50"}>
                 <td className="px-4 py-3 font-mono">{emp.employeeCode}</td>
                 <td className="px-4 py-3">{emp.name}</td>
+                <td className="px-4 py-3 text-sm text-gray-600">{emp.hourlyWage ? `¥${emp.hourlyWage.toLocaleString()}` : "-"}</td>
                 <td className="px-4 py-3">
                   <span className={`px-2 py-0.5 rounded-full text-xs ${emp.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
                     {emp.isActive ? "在籍" : "退職"}

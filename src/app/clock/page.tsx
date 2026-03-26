@@ -330,8 +330,6 @@ export default function ClockPage() {
             </p>
             <div className="flex justify-center gap-4 text-xs text-gray-300">
               <a href="/employee/history" className="hover:text-blue-400">勤怠履歴・修正</a>
-              <button onClick={handleReset} className="hover:text-gray-500">別の人が使う</button>
-              <button onClick={handleForget} className="hover:text-gray-500">記憶を削除</button>
             </div>
           </div>
         )}
@@ -355,8 +353,6 @@ export default function ClockPage() {
             )}
             <div className="flex justify-center gap-4 text-xs text-gray-300 mt-4">
               <a href="/employee/history" className="hover:text-blue-400">勤怠履歴・修正</a>
-              <button onClick={handleReset} className="hover:text-gray-500">別の人が使う</button>
-              <button onClick={handleForget} className="hover:text-gray-500">記憶を削除</button>
             </div>
           </div>
         )}
@@ -375,8 +371,6 @@ export default function ClockPage() {
             </div>
             <div className="flex justify-center gap-4 text-xs text-gray-300">
               <a href="/employee/history" className="hover:text-blue-400">勤怠履歴・修正</a>
-              <button onClick={handleReset} className="hover:text-gray-500">別の人が使う</button>
-              <button onClick={handleForget} className="hover:text-gray-500">記憶を削除</button>
             </div>
           </div>
         )}

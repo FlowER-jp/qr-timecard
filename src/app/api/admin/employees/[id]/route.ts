@@ -32,11 +32,12 @@ export async function PUT(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const { name, pin, isActive } = await req.json();
+  const { name, pin, isActive, hourlyWage } = await req.json();
 
   const data: Record<string, unknown> = {};
   if (name !== undefined) data.name = name;
   if (isActive !== undefined) data.isActive = isActive;
+  if (hourlyWage !== undefined) data.hourlyWage = hourlyWage ? Number(hourlyWage) : null;
   if (pin) {
     if (pin.length < 4) {
       return NextResponse.json({ error: "PINは4桁以上で設定してください" }, { status: 400 });

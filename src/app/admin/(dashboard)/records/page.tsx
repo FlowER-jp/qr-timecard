@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 
-type Employee = { id: number; name: string; employeeCode: string };
+type Employee = { id: number; name: string; employeeCode: string; hourlyWage: number | null };
 type Correction = {
   id: number;
   prevClockIn: string | null;
@@ -30,9 +30,18 @@ function formatTime(t: string | null) {
   return new Date(t).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
 }
 
-function calcNet(record: TimeRecord): string {
-  if (!record.clockIn || !record.clockOut) return "-";
-  const mins = Math.floor((new Date(record.clockOut).getTime() - new Date(record.clockIn).getTime()) / 60000) - record.breakMinutes;
+function toTimeInput(t: string | null): string {
+  if (!t) return "";
+  return new Date(t).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", hour12: false });
+}
+
+function calcNetMins(record: TimeRecord): number {
+  if (!record.clockIn || !record.clockOut) return 0;
+  return Math.max(0, Math.floor((new Date(record.clockOut).getTime() - new Date(record.clockIn).getTime()) / 60000) - record.breakMinutes);
+}
+
+function fmtMins(mins: number): string {
+  if (mins <= 0) return "-";
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return `${h}h${m > 0 ? m + "m" : ""}`;
@@ -48,22 +57,28 @@ export default function RecordsPage() {
   const [filterEmployee, setFilterEmployee] = useState("");
   const [expandedCorrections, setExpandedCorrections] = useState<number[]>([]);
 
+  // Edit state
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({ clockInTime: "", clockOutTime: "", breakMinutes: "", dailyReport: "", reason: "" });
+  const [editLoading, setEditLoading] = useState(false);
+
+  // Payroll state
+  const [incentive, setIncentive] = useState("");
+  const [payrollNote, setPayrollNote] = useState("");
+  const [savingPayroll, setSavingPayroll] = useState(false);
+  const [payrollSaved, setPayrollSaved] = useState(false);
+
   useEffect(() => {
     fetch("/api/admin/employees").then(r => r.json()).then(d => setEmployees(d.employees));
     fetch("/api/admin/settings").then(r => r.json()).then(d => {
       setClosingDay(d.closingDay);
-      // Set current period
-      const today = new Date();
-      const { start: s, end: e } = getClosingPeriod(today, d.closingDay);
-      setStart(s);
-      setEnd(e);
+      const { start: s, end: e } = getClosingPeriod(new Date(), d.closingDay);
+      setStart(s); setEnd(e);
     });
   }, []);
 
   function getClosingPeriod(date: Date, day: number) {
-    const year = date.getFullYear();
-    const month = date.getMonth() + 1;
-    const d = date.getDate();
+    const year = date.getFullYear(), month = date.getMonth() + 1, d = date.getDate();
     let endYear = year, endMonth = month;
     if (d > day) {
       endMonth = month === 12 ? 1 : month + 1;
@@ -74,10 +89,7 @@ export default function RecordsPage() {
     const startDate = new Date(endDate);
     startDate.setMonth(startDate.getMonth() - 1);
     startDate.setDate(startDate.getDate() + 1);
-    return {
-      start: startDate.toISOString().slice(0, 10),
-      end: endDate.toISOString().slice(0, 10),
-    };
+    return { start: startDate.toISOString().slice(0, 10), end: endDate.toISOString().slice(0, 10) };
   }
 
   const fetchRecords = useCallback(async () => {
@@ -89,40 +101,81 @@ export default function RecordsPage() {
     const data = await res.json();
     setRecords(data.records);
     setLoading(false);
+    setPayrollSaved(false);
   }, [start, end, filterEmployee]);
 
   useEffect(() => { fetchRecords(); }, [fetchRecords]);
 
   const prevPeriod = () => {
-    const s = new Date(start);
-    s.setDate(s.getDate() - 1);
+    const s = new Date(start); s.setDate(s.getDate() - 1);
     const { start: ns, end: ne } = getClosingPeriod(s, closingDay);
-    setStart(ns);
-    setEnd(ne);
+    setStart(ns); setEnd(ne);
   };
-
   const nextPeriod = () => {
-    const e = new Date(end);
-    e.setDate(e.getDate() + 1);
+    const e = new Date(end); e.setDate(e.getDate() + 1);
     const { start: ns, end: ne } = getClosingPeriod(e, closingDay);
-    setStart(ns);
-    setEnd(ne);
+    setStart(ns); setEnd(ne);
   };
 
-  const toggleCorrections = (id: number) => {
-    setExpandedCorrections(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
+  const openEdit = (record: TimeRecord) => {
+    setEditId(record.id);
+    setEditForm({
+      clockInTime: toTimeInput(record.clockIn),
+      clockOutTime: toTimeInput(record.clockOut),
+      breakMinutes: String(record.breakMinutes),
+      dailyReport: record.dailyReport ?? "",
+      reason: "",
+    });
   };
 
-  // Calculate totals per employee
+  const handleEditSubmit = async (recordId: number) => {
+    setEditLoading(true);
+    const res = await fetch(`/api/admin/records/${recordId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editForm),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setRecords(prev => prev.map(r => r.id === recordId ? { ...data.record } : r));
+      setEditId(null);
+    }
+    setEditLoading(false);
+  };
+
+  const handleSavePayroll = async () => {
+    const emp = employees.find(e => String(e.id) === filterEmployee);
+    if (!emp || !emp.hourlyWage) return;
+    const totalMins = records.reduce((sum, r) => sum + calcNetMins(r), 0);
+    const baseAmount = Math.floor((totalMins / 60) * emp.hourlyWage);
+    const inc = Number(incentive) || 0;
+    setSavingPayroll(true);
+    const res = await fetch("/api/admin/payroll", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        employeeId: emp.id,
+        periodStart: start,
+        periodEnd: end,
+        workMinutes: totalMins,
+        baseAmount,
+        incentive: inc,
+        note: payrollNote || null,
+      }),
+    });
+    setSavingPayroll(false);
+    if (res.ok) setPayrollSaved(true);
+  };
+
+  const selectedEmployee = employees.find(e => String(e.id) === filterEmployee) ?? null;
+  const totalMins = records.reduce((sum, r) => sum + calcNetMins(r), 0);
+  const baseAmount = selectedEmployee?.hourlyWage
+    ? Math.floor((totalMins / 60) * selectedEmployee.hourlyWage)
+    : null;
+  const totalAmount = baseAmount !== null ? baseAmount + (Number(incentive) || 0) : null;
+
   const totals = employees.reduce<{ [key: string]: number }>((acc, emp) => {
-    const empRecords = records.filter(r => r.employee.id === emp.id);
-    const totalMins = empRecords.reduce((sum, r) => {
-      if (!r.clockIn || !r.clockOut) return sum;
-      return sum + Math.floor((new Date(r.clockOut).getTime() - new Date(r.clockIn).getTime()) / 60000) - r.breakMinutes;
-    }, 0);
-    acc[emp.id] = totalMins;
+    acc[emp.id] = records.filter(r => r.employee.id === emp.id).reduce((s, r) => s + calcNetMins(r), 0);
     return acc;
   }, {});
 
@@ -153,20 +206,81 @@ export default function RecordsPage() {
         </div>
       </div>
 
-      {/* 集計サマリー */}
+      {/* 全員サマリー */}
       {!filterEmployee && (
         <div className="bg-white rounded-xl shadow p-4 mb-4">
           <h2 className="text-sm font-bold text-gray-600 mb-3">期間合計</h2>
           <div className="flex flex-wrap gap-4">
-            {employees.filter(e => totals[e.id] !== undefined && totals[e.id] > 0).map(e => (
+            {employees.filter(e => totals[e.id] > 0).map(e => (
               <div key={e.id} className="text-center">
                 <div className="text-xs text-gray-500">{e.name}</div>
-                <div className="text-lg font-bold text-gray-800">
-                  {Math.floor(totals[e.id] / 60)}h{totals[e.id] % 60 > 0 ? (totals[e.id] % 60) + "m" : ""}
-                </div>
+                <div className="text-lg font-bold text-gray-800">{fmtMins(totals[e.id])}</div>
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* 1人選択時の給与計算 */}
+      {filterEmployee && selectedEmployee && (
+        <div className="bg-white rounded-xl shadow p-4 mb-4">
+          <h2 className="text-sm font-bold text-gray-600 mb-3">給与計算</h2>
+          <div className="grid grid-cols-2 gap-4 mb-4 sm:grid-cols-4">
+            <div>
+              <div className="text-xs text-gray-500">実働時間</div>
+              <div className="text-lg font-bold text-gray-800">{fmtMins(totalMins)}</div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-500">時給</div>
+              <div className="text-lg font-bold text-gray-800">
+                {selectedEmployee.hourlyWage ? `¥${selectedEmployee.hourlyWage.toLocaleString()}` : "未設定"}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-500">基本給</div>
+              <div className="text-lg font-bold text-gray-800">
+                {baseAmount !== null ? `¥${baseAmount.toLocaleString()}` : "-"}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-500">合計</div>
+              <div className="text-xl font-extrabold text-blue-600">
+                {totalAmount !== null ? `¥${totalAmount.toLocaleString()}` : "-"}
+              </div>
+            </div>
+          </div>
+          {selectedEmployee.hourlyWage ? (
+            <div className="border-t pt-3 flex flex-wrap gap-3 items-end">
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">インセンティブ（円）</label>
+                <input
+                  type="number"
+                  value={incentive}
+                  onChange={e => setIncentive(e.target.value)}
+                  placeholder="0"
+                  className="border rounded-lg p-2 text-sm w-32 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">備考</label>
+                <input
+                  value={payrollNote}
+                  onChange={e => setPayrollNote(e.target.value)}
+                  placeholder="任意"
+                  className="border rounded-lg p-2 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                />
+              </div>
+              <button
+                onClick={handleSavePayroll}
+                disabled={savingPayroll || payrollSaved}
+                className="px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 disabled:opacity-50"
+              >
+                {payrollSaved ? "✓ 確定済み" : savingPayroll ? "保存中..." : "給与を確定"}
+              </button>
+            </div>
+          ) : (
+            <p className="text-xs text-orange-500 mt-2">従業員マスタで時給を設定してください</p>
+          )}
         </div>
       )}
 
@@ -177,30 +291,87 @@ export default function RecordsPage() {
         <div className="space-y-2">
           {records.map((record) => (
             <div key={record.id} className="bg-white rounded-xl shadow overflow-hidden">
-              <div className="flex items-center gap-4 px-4 py-3">
-                <div className="text-sm text-gray-500 w-24">{record.date}</div>
-                <div className="font-medium text-gray-800 w-28">{record.employee.name}</div>
-                <div className="text-sm text-gray-600 flex gap-4">
-                  <span>出勤: {formatTime(record.clockIn)}</span>
-                  <span>退勤: {formatTime(record.clockOut)}</span>
-                  <span>休憩: {record.breakMinutes}分</span>
-                  <span className="font-medium text-blue-600">実働: {calcNet(record)}</span>
-                </div>
-                {record.dailyReport && (
-                  <div className="text-xs text-gray-400 truncate max-w-xs ml-auto" title={record.dailyReport}>
-                    📝 {record.dailyReport}
+              {editId === record.id ? (
+                <div className="p-4">
+                  <p className="text-xs font-bold text-gray-500 mb-3">{record.date} — {record.employee.name}</p>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 mb-3">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">出勤時刻</label>
+                      <input type="time" value={editForm.clockInTime}
+                        onChange={e => setEditForm(f => ({ ...f, clockInTime: e.target.value }))}
+                        className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">退勤時刻</label>
+                      <input type="time" value={editForm.clockOutTime}
+                        onChange={e => setEditForm(f => ({ ...f, clockOutTime: e.target.value }))}
+                        className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">休憩（分）</label>
+                      <input type="number" value={editForm.breakMinutes}
+                        onChange={e => setEditForm(f => ({ ...f, breakMinutes: e.target.value }))}
+                        className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">修正理由</label>
+                      <input value={editForm.reason}
+                        onChange={e => setEditForm(f => ({ ...f, reason: e.target.value }))}
+                        placeholder="任意"
+                        className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                    </div>
                   </div>
-                )}
-                {record.corrections.length > 0 && (
-                  <button
-                    onClick={() => toggleCorrections(record.id)}
-                    className="ml-auto text-xs text-orange-500 bg-orange-50 px-2 py-1 rounded-lg hover:bg-orange-100"
-                  >
-                    修正履歴 ({record.corrections.length})
-                  </button>
-                )}
-              </div>
-              {expandedCorrections.includes(record.id) && (
+                  <div className="mb-3">
+                    <label className="block text-xs text-gray-600 mb-1">日報</label>
+                    <input value={editForm.dailyReport}
+                      onChange={e => setEditForm(f => ({ ...f, dailyReport: e.target.value }))}
+                      className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => handleEditSubmit(record.id)} disabled={editLoading}
+                      className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 disabled:opacity-50">
+                      {editLoading ? "保存中..." : "保存"}
+                    </button>
+                    <button onClick={() => setEditId(null)}
+                      className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200">
+                      キャンセル
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 px-4 py-3 flex-wrap">
+                  <div className="text-sm text-gray-500 w-24 shrink-0">{record.date}</div>
+                  {!filterEmployee && <div className="font-medium text-gray-800 w-24 shrink-0">{record.employee.name}</div>}
+                  <div className="text-sm text-gray-600 flex gap-3 flex-wrap">
+                    <span>出勤: {formatTime(record.clockIn)}</span>
+                    <span>退勤: {formatTime(record.clockOut)}</span>
+                    <span>休憩: {record.breakMinutes}分</span>
+                    <span className="font-medium text-blue-600">実働: {fmtMins(calcNetMins(record))}</span>
+                  </div>
+                  {record.dailyReport && (
+                    <div className="text-xs text-gray-400 truncate max-w-xs" title={record.dailyReport}>
+                      📝 {record.dailyReport}
+                    </div>
+                  )}
+                  <div className="ml-auto flex items-center gap-2">
+                    {record.corrections.length > 0 && (
+                      <button
+                        onClick={() => setExpandedCorrections(prev =>
+                          prev.includes(record.id) ? prev.filter(x => x !== record.id) : [...prev, record.id]
+                        )}
+                        className="text-xs text-orange-500 bg-orange-50 px-2 py-1 rounded-lg hover:bg-orange-100"
+                      >
+                        修正履歴 ({record.corrections.length})
+                      </button>
+                    )}
+                    <button onClick={() => openEdit(record)}
+                      className="text-xs text-blue-500 bg-blue-50 px-2 py-1 rounded-lg hover:bg-blue-100">
+                      編集
+                    </button>
+                  </div>
+                </div>
+              )}
+              {expandedCorrections.includes(record.id) && editId !== record.id && (
                 <div className="border-t bg-orange-50 px-4 py-3">
                   <p className="text-xs font-bold text-orange-600 mb-2">修正履歴</p>
                   <div className="space-y-2">
