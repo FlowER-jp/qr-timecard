@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { signToken } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
+  try {
   const { username, password } = await req.json();
 
   const admin = await prisma.adminUser.findUnique({ where: { username } });
@@ -31,4 +32,8 @@ export async function POST(req: NextRequest) {
     path: "/",
   });
   return res;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
 }
