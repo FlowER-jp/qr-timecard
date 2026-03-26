@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { calcPayrollBreakdown } from "@/lib/payrollCalc";
 
-type Employee = { id: number; name: string; employeeCode: string; hourlyWage: number | null };
+type Employee = { id: number; name: string; employeeCode: string; hourlyWage: number | null; nightShiftEnabled: boolean };
 type Correction = {
   id: number;
   prevClockIn: string | null;
@@ -145,9 +146,7 @@ export default function RecordsPage() {
 
   const handleSavePayroll = async () => {
     const emp = employees.find(e => String(e.id) === filterEmployee);
-    if (!emp || !emp.hourlyWage) return;
-    const totalMins = records.reduce((sum, r) => sum + calcNetMins(r), 0);
-    const baseAmount = Math.floor((totalMins / 60) * emp.hourlyWage);
+    if (!emp || !emp.hourlyWage || !breakdown) return;
     const inc = Number(incentive) || 0;
     setSavingPayroll(true);
     const res = await fetch("/api/admin/payroll", {
@@ -157,8 +156,10 @@ export default function RecordsPage() {
         employeeId: emp.id,
         periodStart: start,
         periodEnd: end,
-        workMinutes: totalMins,
-        baseAmount,
+        workMinutes: breakdown.netMinutes,
+        baseAmount: breakdown.baseAmount,
+        nightMinutes: breakdown.nightMinutes,
+        nightAmount: breakdown.nightPremiumAmount,
         incentive: inc,
         note: payrollNote || null,
       }),
@@ -168,11 +169,11 @@ export default function RecordsPage() {
   };
 
   const selectedEmployee = employees.find(e => String(e.id) === filterEmployee) ?? null;
-  const totalMins = records.reduce((sum, r) => sum + calcNetMins(r), 0);
-  const baseAmount = selectedEmployee?.hourlyWage
-    ? Math.floor((totalMins / 60) * selectedEmployee.hourlyWage)
+  const breakdown = selectedEmployee?.hourlyWage
+    ? calcPayrollBreakdown(records, selectedEmployee.hourlyWage, selectedEmployee.nightShiftEnabled)
     : null;
-  const totalAmount = baseAmount !== null ? baseAmount + (Number(incentive) || 0) : null;
+  const totalMins = breakdown?.netMinutes ?? records.reduce((sum, r) => sum + calcNetMins(r), 0);
+  const totalAmount = breakdown ? breakdown.totalBeforeIncentive + (Number(incentive) || 0) : null;
 
   const totals = employees.reduce<{ [key: string]: number }>((acc, emp) => {
     acc[emp.id] = records.filter(r => r.employee.id === emp.id).reduce((s, r) => s + calcNetMins(r), 0);
@@ -239,7 +240,7 @@ export default function RecordsPage() {
             <div>
               <div className="text-xs text-gray-500">基本給</div>
               <div className="text-lg font-bold text-gray-800">
-                {baseAmount !== null ? `¥${baseAmount.toLocaleString()}` : "-"}
+                {breakdown ? `¥${breakdown.baseAmount.toLocaleString()}` : "-"}
               </div>
             </div>
             <div>
@@ -249,6 +250,14 @@ export default function RecordsPage() {
               </div>
             </div>
           </div>
+          {breakdown && breakdown.nightMinutes > 0 && (
+            <div className="bg-purple-50 rounded-lg p-3 mb-3 text-sm">
+              <span className="font-medium text-purple-700">深夜割増内訳：</span>
+              <span className="text-purple-600 ml-2">
+                通常 {fmtMins(breakdown.normalMinutes)} / 深夜 {fmtMins(breakdown.nightMinutes)}（+¥{breakdown.nightPremiumAmount.toLocaleString()}）
+              </span>
+            </div>
+          )}
           {selectedEmployee.hourlyWage ? (
             <div className="border-t pt-3 flex flex-wrap gap-3 items-end">
               <div>
