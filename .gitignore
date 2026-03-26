@@ -40,3 +40,6 @@ prisma/*.db-journal
 
 # claude code
 .claude/
+
+# supabase
+supabase/.temp/
