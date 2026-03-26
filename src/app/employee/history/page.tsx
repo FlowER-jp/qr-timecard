@@ -58,14 +58,21 @@ export default function HistoryPage() {
   const [error, setError] = useState("");
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
-  const fetchRecords = useCallback(async () => {
-    const res = await fetch("/api/records");
+  const [showAll, setShowAll] = useState(false);
+
+  const fetchRecords = useCallback(async (all = false) => {
+    const params = all ? "" : (() => {
+      const end = new Date().toISOString().slice(0, 10);
+      const start = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      return `?start=${start}&end=${end}`;
+    })();
+    const res = await fetch(`/api/records${params}`);
     const data = await res.json();
     setRecords(data.records);
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchRecords(); }, [fetchRecords]);
+  useEffect(() => { fetchRecords(false); }, [fetchRecords]);
 
   const openEdit = (record: TimeRecord) => {
     setEditId(record.id);
@@ -94,8 +101,8 @@ export default function HistoryPage() {
       setSaving(false);
       return;
     }
+    setRecords(prev => prev.map(r => r.id === editId ? data.record : r));
     setEditId(null);
-    await fetchRecords();
     setSaving(false);
   };
 
@@ -224,6 +231,14 @@ export default function HistoryPage() {
             )}
           </div>
         ))}
+        {!showAll && records.length > 0 && (
+          <button
+            onClick={() => { setShowAll(true); setLoading(true); fetchRecords(true); }}
+            className="w-full py-3 text-sm text-gray-400 hover:text-gray-600"
+          >
+            全期間を表示
+          </button>
+        )}
         {records.length === 0 && (
           <p className="text-center text-gray-400 py-8">勤怠記録がありません</p>
         )}

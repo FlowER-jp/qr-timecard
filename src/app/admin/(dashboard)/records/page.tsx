@@ -70,11 +70,26 @@ export default function RecordsPage() {
   const [payrollSaved, setPayrollSaved] = useState(false);
 
   useEffect(() => {
-    fetch("/api/admin/employees").then(r => r.json()).then(d => setEmployees(d.employees));
-    fetch("/api/admin/settings").then(r => r.json()).then(d => {
-      setClosingDay(d.closingDay);
-      const { start: s, end: e } = getClosingPeriod(new Date(), d.closingDay);
-      setStart(s); setEnd(e);
+    // Use cached closingDay so records fetch can start immediately in parallel
+    const cachedDay = Number(localStorage.getItem("closingDay") ?? "25") || 25;
+    const { start: s, end: e } = getClosingPeriod(new Date(), cachedDay);
+    setClosingDay(cachedDay);
+    setStart(s);
+    setEnd(e);
+
+    Promise.all([
+      fetch("/api/admin/employees").then(r => r.json()),
+      fetch("/api/admin/settings").then(r => r.json()),
+    ]).then(([empData, settingsData]) => {
+      setEmployees(empData.employees);
+      const actualDay: number = settingsData.closingDay;
+      localStorage.setItem("closingDay", String(actualDay));
+      if (actualDay !== cachedDay) {
+        setClosingDay(actualDay);
+        const { start: ns, end: ne } = getClosingPeriod(new Date(), actualDay);
+        setStart(ns);
+        setEnd(ne);
+      }
     });
   }, []);
 
