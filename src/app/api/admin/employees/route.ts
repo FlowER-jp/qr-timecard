@@ -22,27 +22,32 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getAdminSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const session = await getAdminSession();
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { employeeCode, name, pin } = await req.json();
+    const { employeeCode, name, pin } = await req.json();
 
-  if (!employeeCode || !name || !pin) {
-    return NextResponse.json({ error: "必須項目が不足しています" }, { status: 400 });
+    if (!employeeCode || !name || !pin) {
+      return NextResponse.json({ error: "必須項目が不足しています" }, { status: 400 });
+    }
+    if (pin.length < 4) {
+      return NextResponse.json({ error: "PINは4桁以上で設定してください" }, { status: 400 });
+    }
+
+    const existing = await prisma.employee.findUnique({ where: { employeeCode } });
+    if (existing) {
+      return NextResponse.json({ error: "社員コードが重複しています" }, { status: 400 });
+    }
+
+    const hashedPin = await bcrypt.hash(pin, 10);
+    const employee = await prisma.employee.create({
+      data: { employeeCode, name, pin: hashedPin },
+    });
+
+    return NextResponse.json({ ok: true, employee });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
-  if (pin.length < 4) {
-    return NextResponse.json({ error: "PINは4桁以上で設定してください" }, { status: 400 });
-  }
-
-  const existing = await prisma.employee.findUnique({ where: { employeeCode } });
-  if (existing) {
-    return NextResponse.json({ error: "社員コードが重複しています" }, { status: 400 });
-  }
-
-  const hashedPin = await bcrypt.hash(pin, 10);
-  const employee = await prisma.employee.create({
-    data: { employeeCode, name, pin: hashedPin },
-  });
-
-  return NextResponse.json({ ok: true, employee });
 }
