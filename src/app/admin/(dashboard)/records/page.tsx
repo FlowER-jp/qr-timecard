@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { calcPayrollBreakdown } from "@/lib/payrollCalc";
 
-type Employee = { id: number; name: string; employeeCode: string; hourlyWage: number | null; nightShiftEnabled: boolean; overtimeEnabled: boolean };
+type Employee = { id: number; name: string; employeeCode: string; employeeType: string; hourlyWage: number | null; monthlyWage: number | null; scheduledHoursPerMonth: number | null; nightShiftEnabled: boolean; overtimeEnabled: boolean };
 type Correction = {
   id: number;
   prevClockIn: string | null;
@@ -171,8 +171,19 @@ export default function RecordsPage() {
   };
 
   const selectedEmployee = employees.find(e => String(e.id) === filterEmployee) ?? null;
-  const breakdown = selectedEmployee?.hourlyWage
-    ? calcPayrollBreakdown(records, selectedEmployee.hourlyWage, selectedEmployee.nightShiftEnabled, selectedEmployee.overtimeEnabled)
+  const isMonthly = selectedEmployee?.employeeType === "monthly";
+  const effectiveHourlyRate = isMonthly
+    ? (selectedEmployee!.monthlyWage ?? 0) / (selectedEmployee!.scheduledHoursPerMonth ?? 160)
+    : (selectedEmployee?.hourlyWage ?? 0);
+  const hasWage = isMonthly ? !!selectedEmployee?.monthlyWage : !!selectedEmployee?.hourlyWage;
+  const breakdown = selectedEmployee && hasWage
+    ? calcPayrollBreakdown(
+        records,
+        effectiveHourlyRate,
+        selectedEmployee.nightShiftEnabled,
+        selectedEmployee.overtimeEnabled,
+        isMonthly ? (selectedEmployee.monthlyWage ?? null) : null
+      )
     : null;
   const totalMins = breakdown?.netMinutes ?? records.reduce((sum, r) => sum + calcNetMins(r), 0);
   const totalAmount = breakdown ? breakdown.totalBeforeIncentive + (Number(incentive) || 0) : null;
@@ -234,13 +245,19 @@ export default function RecordsPage() {
               <div className="text-lg font-bold text-gray-800">{fmtMins(totalMins)}</div>
             </div>
             <div>
-              <div className="text-xs text-gray-500">時給</div>
+              <div className="text-xs text-gray-500">{isMonthly ? "月給 / 残業単価" : "時給"}</div>
               <div className="text-lg font-bold text-gray-800">
-                {selectedEmployee.hourlyWage ? `¥${selectedEmployee.hourlyWage.toLocaleString()}` : "未設定"}
+                {isMonthly
+                  ? selectedEmployee.monthlyWage
+                    ? <span>¥{selectedEmployee.monthlyWage.toLocaleString()}<span className="text-xs text-gray-400 ml-1">（残業¥{Math.round(effectiveHourlyRate)}/h）</span></span>
+                    : "未設定"
+                  : selectedEmployee.hourlyWage
+                    ? `¥${selectedEmployee.hourlyWage.toLocaleString()}`
+                    : "未設定"}
               </div>
             </div>
             <div>
-              <div className="text-xs text-gray-500">基本給</div>
+              <div className="text-xs text-gray-500">{isMonthly ? "月給（固定）" : "基本給"}</div>
               <div className="text-lg font-bold text-gray-800">
                 {breakdown ? `¥${breakdown.baseAmount.toLocaleString()}` : "-"}
               </div>
@@ -272,7 +289,7 @@ export default function RecordsPage() {
               )}
             </div>
           )}
-          {selectedEmployee.hourlyWage ? (
+          {hasWage ? (
             <div className="border-t pt-3 flex flex-wrap gap-3 items-end">
               <div>
                 <label className="block text-xs text-gray-600 mb-1">インセンティブ（円）</label>
@@ -302,7 +319,7 @@ export default function RecordsPage() {
               </button>
             </div>
           ) : (
-            <p className="text-xs text-orange-500 mt-2">従業員マスタで時給を設定してください</p>
+            <p className="text-xs text-orange-500 mt-2">従業員マスタで{isMonthly ? "月給・所定時間" : "時給"}を設定してください</p>
           )}
         </div>
       )}

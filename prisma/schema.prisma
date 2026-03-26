@@ -20,8 +20,11 @@ model Employee {
   employeeCode      String           @unique
   name              String
   pin               String
-  hourlyWage        Int?
-  nightShiftEnabled Boolean          @default(false)
+  employeeType          String   @default("hourly")  // "hourly" | "monthly"
+  hourlyWage            Int?
+  monthlyWage           Int?
+  scheduledHoursPerMonth Int?
+  nightShiftEnabled     Boolean          @default(false)
   overtimeEnabled   Boolean          @default(false)
   isActive          Boolean          @default(true)
   createdAt         DateTime         @default(now())

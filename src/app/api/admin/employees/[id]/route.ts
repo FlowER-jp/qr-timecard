@@ -32,12 +32,15 @@ export async function PUT(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const { name, pin, isActive, hourlyWage, nightShiftEnabled, overtimeEnabled } = await req.json();
+  const { name, pin, isActive, employeeType, hourlyWage, monthlyWage, scheduledHoursPerMonth, nightShiftEnabled, overtimeEnabled } = await req.json();
 
   const data: Record<string, unknown> = {};
   if (name !== undefined) data.name = name;
   if (isActive !== undefined) data.isActive = isActive;
+  if (employeeType !== undefined) data.employeeType = employeeType;
   if (hourlyWage !== undefined) data.hourlyWage = hourlyWage ? Number(hourlyWage) : null;
+  if (monthlyWage !== undefined) data.monthlyWage = monthlyWage ? Number(monthlyWage) : null;
+  if (scheduledHoursPerMonth !== undefined) data.scheduledHoursPerMonth = scheduledHoursPerMonth ? Number(scheduledHoursPerMonth) : null;
   if (nightShiftEnabled !== undefined) data.nightShiftEnabled = !!nightShiftEnabled;
   if (overtimeEnabled !== undefined) data.overtimeEnabled = !!overtimeEnabled;
   if (pin) {

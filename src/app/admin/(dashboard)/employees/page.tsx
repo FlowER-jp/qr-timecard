@@ -6,7 +6,10 @@ type Employee = {
   id: number;
   employeeCode: string;
   name: string;
+  employeeType: string;
   hourlyWage: number | null;
+  monthlyWage: number | null;
+  scheduledHoursPerMonth: number | null;
   nightShiftEnabled: boolean;
   overtimeEnabled: boolean;
   isActive: boolean;
@@ -18,7 +21,7 @@ export default function EmployeesPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState<Employee | null>(null);
-  const [form, setForm] = useState({ employeeCode: "", name: "", pin: "", hourlyWage: "", nightShiftEnabled: false, overtimeEnabled: false });
+  const [form, setForm] = useState({ employeeCode: "", name: "", pin: "", employeeType: "hourly", hourlyWage: "", monthlyWage: "", scheduledHoursPerMonth: "160", nightShiftEnabled: false, overtimeEnabled: false });
   const [error, setError] = useState("");
 
   const fetchEmployees = async () => {
@@ -40,7 +43,7 @@ export default function EmployeesPage() {
     });
     const data = await res.json();
     if (!res.ok) { setError(data.error); return; }
-    setForm({ employeeCode: "", name: "", pin: "", hourlyWage: "", nightShiftEnabled: false, overtimeEnabled: false });
+    setForm({ employeeCode: "", name: "", pin: "", employeeType: "hourly", hourlyWage: "", monthlyWage: "", scheduledHoursPerMonth: "160", nightShiftEnabled: false, overtimeEnabled: false });
     setShowForm(false);
     fetchEmployees();
   };
@@ -49,7 +52,7 @@ export default function EmployeesPage() {
     e.preventDefault();
     if (!editTarget) return;
     setError("");
-    const payload: Record<string, unknown> = { name: form.name, hourlyWage: form.hourlyWage || null, nightShiftEnabled: form.nightShiftEnabled, overtimeEnabled: form.overtimeEnabled };
+    const payload: Record<string, unknown> = { name: form.name, employeeType: form.employeeType, hourlyWage: form.employeeType === "hourly" ? (form.hourlyWage || null) : null, monthlyWage: form.employeeType === "monthly" ? (form.monthlyWage || null) : null, scheduledHoursPerMonth: form.employeeType === "monthly" ? (form.scheduledHoursPerMonth || null) : null, nightShiftEnabled: form.nightShiftEnabled, overtimeEnabled: form.overtimeEnabled };
     if (form.pin) payload.pin = form.pin;
     const res = await fetch(`/api/admin/employees/${editTarget.id}`, {
       method: "PUT",
@@ -84,7 +87,7 @@ export default function EmployeesPage() {
 
   const openEdit = (emp: Employee) => {
     setEditTarget(emp);
-    setForm({ employeeCode: emp.employeeCode, name: emp.name, pin: "", hourlyWage: emp.hourlyWage?.toString() ?? "", nightShiftEnabled: emp.nightShiftEnabled, overtimeEnabled: emp.overtimeEnabled });
+    setForm({ employeeCode: emp.employeeCode, name: emp.name, pin: "", employeeType: emp.employeeType, hourlyWage: emp.hourlyWage?.toString() ?? "", monthlyWage: emp.monthlyWage?.toString() ?? "", scheduledHoursPerMonth: emp.scheduledHoursPerMonth?.toString() ?? "160", nightShiftEnabled: emp.nightShiftEnabled, overtimeEnabled: emp.overtimeEnabled });
     setError("");
   };
 
@@ -95,7 +98,7 @@ export default function EmployeesPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold text-gray-800">従業員管理</h1>
         <button
-          onClick={() => { setShowForm(true); setForm({ employeeCode: "", name: "", pin: "", hourlyWage: "", nightShiftEnabled: false, overtimeEnabled: false }); setError(""); }}
+          onClick={() => { setShowForm(true); setForm({ employeeCode: "", name: "", pin: "", employeeType: "hourly", hourlyWage: "", monthlyWage: "", scheduledHoursPerMonth: "160", nightShiftEnabled: false, overtimeEnabled: false }); setError(""); }}
           className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition"
         >
           + 従業員追加
@@ -139,15 +142,51 @@ export default function EmployeesPage() {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-600 mb-1">時給（円）</label>
-              <input
-                type="number"
-                value={form.hourlyWage}
-                onChange={(e) => setForm({ ...form, hourlyWage: e.target.value })}
-                placeholder="1000"
+              <label className="block text-xs text-gray-600 mb-1">給与形態</label>
+              <select
+                value={form.employeeType}
+                onChange={(e) => setForm({ ...form, employeeType: e.target.value })}
                 className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
-              />
+              >
+                <option value="hourly">時給制</option>
+                <option value="monthly">月給制</option>
+              </select>
             </div>
+            {form.employeeType === "hourly" ? (
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">時給（円）</label>
+                <input
+                  type="number"
+                  value={form.hourlyWage}
+                  onChange={(e) => setForm({ ...form, hourlyWage: e.target.value })}
+                  placeholder="1000"
+                  className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                />
+              </div>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">月給（円）</label>
+                  <input
+                    type="number"
+                    value={form.monthlyWage}
+                    onChange={(e) => setForm({ ...form, monthlyWage: e.target.value })}
+                    placeholder="250000"
+                    className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">所定時間/月（時間）</label>
+                  <input
+                    type="number"
+                    value={form.scheduledHoursPerMonth}
+                    onChange={(e) => setForm({ ...form, scheduledHoursPerMonth: e.target.value })}
+                    placeholder="160"
+                    className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  />
+                </div>
+              </>
+            )}
             <div className="col-span-4 flex flex-wrap items-center gap-4">
               <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
                 <input
@@ -206,15 +245,51 @@ export default function EmployeesPage() {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-600 mb-1">時給（円）</label>
-              <input
-                type="number"
-                value={form.hourlyWage}
-                onChange={(e) => setForm({ ...form, hourlyWage: e.target.value })}
-                placeholder="1000"
+              <label className="block text-xs text-gray-600 mb-1">給与形態</label>
+              <select
+                value={form.employeeType}
+                onChange={(e) => setForm({ ...form, employeeType: e.target.value })}
                 className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
-              />
+              >
+                <option value="hourly">時給制</option>
+                <option value="monthly">月給制</option>
+              </select>
             </div>
+            {form.employeeType === "hourly" ? (
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">時給（円）</label>
+                <input
+                  type="number"
+                  value={form.hourlyWage}
+                  onChange={(e) => setForm({ ...form, hourlyWage: e.target.value })}
+                  placeholder="1000"
+                  className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                />
+              </div>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">月給（円）</label>
+                  <input
+                    type="number"
+                    value={form.monthlyWage}
+                    onChange={(e) => setForm({ ...form, monthlyWage: e.target.value })}
+                    placeholder="250000"
+                    className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">所定時間/月（時間）</label>
+                  <input
+                    type="number"
+                    value={form.scheduledHoursPerMonth}
+                    onChange={(e) => setForm({ ...form, scheduledHoursPerMonth: e.target.value })}
+                    placeholder="160"
+                    className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  />
+                </div>
+              </>
+            )}
             <div className="col-span-4 flex flex-wrap items-center gap-4">
               <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
                 <input
@@ -251,7 +326,7 @@ export default function EmployeesPage() {
             <tr>
               <th className="px-4 py-3 text-left">社員コード</th>
               <th className="px-4 py-3 text-left">氏名</th>
-              <th className="px-4 py-3 text-left">時給</th>
+              <th className="px-4 py-3 text-left">給与</th>
               <th className="px-4 py-3 text-left">深夜割増</th>
               <th className="px-4 py-3 text-left">残業割増</th>
               <th className="px-4 py-3 text-left">状態</th>
@@ -263,7 +338,11 @@ export default function EmployeesPage() {
               <tr key={emp.id} className={emp.isActive ? "" : "opacity-50"}>
                 <td className="px-4 py-3 font-mono">{emp.employeeCode}</td>
                 <td className="px-4 py-3">{emp.name}</td>
-                <td className="px-4 py-3 text-sm text-gray-600">{emp.hourlyWage ? `¥${emp.hourlyWage.toLocaleString()}` : "-"}</td>
+                <td className="px-4 py-3 text-sm text-gray-600">
+                  {emp.employeeType === "monthly"
+                    ? emp.monthlyWage ? <span>¥{emp.monthlyWage.toLocaleString()}<span className="text-gray-400 text-xs ml-1">月給</span></span> : "-"
+                    : emp.hourlyWage ? <span>¥{emp.hourlyWage.toLocaleString()}<span className="text-gray-400 text-xs ml-1">時給</span></span> : "-"}
+                </td>
                 <td className="px-4 py-3 text-sm">
                   {emp.nightShiftEnabled ? <span className="text-purple-600 font-medium">あり</span> : <span className="text-gray-300">-</span>}
                 </td>

@@ -13,7 +13,10 @@ export async function GET() {
       id: true,
       employeeCode: true,
       name: true,
+      employeeType: true,
       hourlyWage: true,
+      monthlyWage: true,
+      scheduledHoursPerMonth: true,
       nightShiftEnabled: true,
       overtimeEnabled: true,
       isActive: true,
@@ -29,7 +32,7 @@ export async function POST(req: NextRequest) {
     const session = await getAdminSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { employeeCode, name, pin, hourlyWage, nightShiftEnabled, overtimeEnabled } = await req.json();
+    const { employeeCode, name, pin, employeeType, hourlyWage, monthlyWage, scheduledHoursPerMonth, nightShiftEnabled, overtimeEnabled } = await req.json();
 
     if (!employeeCode || !name || !pin) {
       return NextResponse.json({ error: "必須項目が不足しています" }, { status: 400 });
@@ -49,7 +52,10 @@ export async function POST(req: NextRequest) {
         employeeCode,
         name,
         pin: hashedPin,
+        employeeType: employeeType ?? "hourly",
         hourlyWage: hourlyWage ? Number(hourlyWage) : null,
+        monthlyWage: monthlyWage ? Number(monthlyWage) : null,
+        scheduledHoursPerMonth: scheduledHoursPerMonth ? Number(scheduledHoursPerMonth) : null,
         nightShiftEnabled: !!nightShiftEnabled,
         overtimeEnabled: !!overtimeEnabled,
       },

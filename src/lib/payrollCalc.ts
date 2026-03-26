@@ -1,6 +1,7 @@
 // Night shift: 22:00-05:00 JST (+25%)
 // Overtime: >8h/day (+25%)
-// Night + overtime overlap: cumulative → 1.5x total (both premiums apply independently)
+// Night + overtime: cumulative (1.5x total, correct per Japanese labor law)
+// Monthly salary: fixedBaseAmount replaces hourly base calculation
 
 function calcNightMinutesGross(clockIn: Date, clockOut: Date): number {
   const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -12,9 +13,8 @@ function calcNightMinutesGross(clockIn: Date, clockOut: Date): number {
   const endDay = Math.floor(outMinsJST / 1440);
 
   for (let day = startDay; day <= endDay; day++) {
-    const segA = [day * 1440, day * 1440 + 5 * 60];         // 00:00-05:00
-    const segB = [day * 1440 + 22 * 60, day * 1440 + 24 * 60]; // 22:00-24:00
-
+    const segA = [day * 1440, day * 1440 + 5 * 60];
+    const segB = [day * 1440 + 22 * 60, day * 1440 + 24 * 60];
     for (const [sStart, sEnd] of [segA, segB]) {
       const overlapStart = Math.max(inMinsJST, sStart);
       const overlapEnd = Math.min(outMinsJST, sEnd);
@@ -36,11 +36,16 @@ export interface PayrollBreakdown {
   totalBeforeIncentive: number;
 }
 
+/**
+ * @param effectiveHourlyRate  For hourly: hourlyWage. For monthly: monthlyWage / scheduledHoursPerMonth.
+ * @param fixedBaseAmount      If set (monthly employee), use this as baseAmount instead of computing from hours.
+ */
 export function calcPayrollBreakdown(
   records: Array<{ clockIn: string | null; clockOut: string | null; breakMinutes: number }>,
-  hourlyWage: number,
+  effectiveHourlyRate: number,
   nightShiftEnabled: boolean,
-  overtimeEnabled: boolean
+  overtimeEnabled: boolean,
+  fixedBaseAmount: number | null = null
 ): PayrollBreakdown {
   let netMinutes = 0;
   let nightMinutesFloat = 0;
@@ -56,13 +61,10 @@ export function calcPayrollBreakdown(
 
     if (nightShiftEnabled) {
       const grossNight = calcNightMinutesGross(inDate, outDate);
-      // Deduct break proportionally across all hours
-      const nightNet = grossMins > 0 ? (grossNight / grossMins) * netMins : 0;
-      nightMinutesFloat += nightNet;
+      nightMinutesFloat += grossMins > 0 ? (grossNight / grossMins) * netMins : 0;
     }
 
     if (overtimeEnabled) {
-      // Overtime threshold: 8h = 480 minutes per day
       overtimeMinutes += Math.max(0, netMins - 480);
     }
   }
@@ -72,12 +74,15 @@ export function calcPayrollBreakdown(
   overtimeMinutes = Math.round(overtimeMinutes);
   const normalMinutes = netMinutes - nightMinutes - overtimeMinutes;
 
-  const baseAmount = Math.floor((netMinutes / 60) * hourlyWage);
+  const baseAmount = fixedBaseAmount !== null
+    ? fixedBaseAmount
+    : Math.floor((netMinutes / 60) * effectiveHourlyRate);
+
   const nightPremiumAmount = nightShiftEnabled
-    ? Math.floor((nightMinutes / 60) * hourlyWage * 0.25)
+    ? Math.floor((nightMinutes / 60) * effectiveHourlyRate * 0.25)
     : 0;
   const overtimePremiumAmount = overtimeEnabled
-    ? Math.floor((overtimeMinutes / 60) * hourlyWage * 0.25)
+    ? Math.floor((overtimeMinutes / 60) * effectiveHourlyRate * 0.25)
     : 0;
 
   return {
