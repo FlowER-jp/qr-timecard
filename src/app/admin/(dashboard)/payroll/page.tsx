@@ -11,6 +11,8 @@ type Payroll = {
   baseAmount: number;
   nightMinutes: number;
   nightAmount: number;
+  overtimeMinutes: number;
+  overtimeAmount: number;
   incentive: number;
   totalAmount: number;
   note: string | null;
@@ -73,6 +75,7 @@ export default function PayrollPage() {
                 <th className="px-4 py-3 text-right">実働</th>
                 <th className="px-4 py-3 text-right">基本給</th>
                 <th className="px-4 py-3 text-right">深夜割増</th>
+                <th className="px-4 py-3 text-right">残業割増</th>
                 <th className="px-4 py-3 text-right">インセンティブ</th>
                 <th className="px-4 py-3 text-right">合計</th>
                 <th className="px-4 py-3 text-left">備考</th>
@@ -87,6 +90,9 @@ export default function PayrollPage() {
                   <td className="px-4 py-3 text-right">¥{p.baseAmount.toLocaleString()}</td>
                   <td className="px-4 py-3 text-right text-purple-600">
                     {p.nightAmount > 0 ? `+¥${p.nightAmount.toLocaleString()}` : "-"}
+                  </td>
+                  <td className="px-4 py-3 text-right text-orange-600">
+                    {p.overtimeAmount > 0 ? `+¥${p.overtimeAmount.toLocaleString()}` : "-"}
                   </td>
                   <td className="px-4 py-3 text-right text-green-600">
                     {p.incentive > 0 ? `+¥${p.incentive.toLocaleString()}` : "-"}

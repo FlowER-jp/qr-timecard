@@ -22,14 +22,14 @@ export async function POST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { employeeId, periodStart, periodEnd, workMinutes, baseAmount, nightMinutes, nightAmount, incentive, note } =
+  const { employeeId, periodStart, periodEnd, workMinutes, baseAmount, nightMinutes, nightAmount, overtimeMinutes, overtimeAmount, incentive, note } =
     await req.json();
 
-  const totalAmount = Number(baseAmount) + Number(nightAmount ?? 0) + Number(incentive ?? 0);
+  const totalAmount = Number(baseAmount) + Number(nightAmount ?? 0) + Number(overtimeAmount ?? 0) + Number(incentive ?? 0);
 
   const payroll = await prisma.payroll.upsert({
     where: { employeeId_periodStart_periodEnd: { employeeId: Number(employeeId), periodStart, periodEnd } },
-    update: { workMinutes, baseAmount, nightMinutes: nightMinutes ?? 0, nightAmount: nightAmount ?? 0, incentive: incentive ?? 0, totalAmount, note: note ?? null },
+    update: { workMinutes, baseAmount, nightMinutes: nightMinutes ?? 0, nightAmount: nightAmount ?? 0, overtimeMinutes: overtimeMinutes ?? 0, overtimeAmount: overtimeAmount ?? 0, incentive: incentive ?? 0, totalAmount, note: note ?? null },
     create: {
       employeeId: Number(employeeId),
       periodStart,
@@ -38,6 +38,8 @@ export async function POST(req: NextRequest) {
       baseAmount,
       nightMinutes: nightMinutes ?? 0,
       nightAmount: nightAmount ?? 0,
+      overtimeMinutes: overtimeMinutes ?? 0,
+      overtimeAmount: overtimeAmount ?? 0,
       incentive: incentive ?? 0,
       totalAmount,
       note: note ?? null,

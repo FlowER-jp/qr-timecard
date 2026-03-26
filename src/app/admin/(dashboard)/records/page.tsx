@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { calcPayrollBreakdown } from "@/lib/payrollCalc";
 
-type Employee = { id: number; name: string; employeeCode: string; hourlyWage: number | null; nightShiftEnabled: boolean };
+type Employee = { id: number; name: string; employeeCode: string; hourlyWage: number | null; nightShiftEnabled: boolean; overtimeEnabled: boolean };
 type Correction = {
   id: number;
   prevClockIn: string | null;
@@ -160,6 +160,8 @@ export default function RecordsPage() {
         baseAmount: breakdown.baseAmount,
         nightMinutes: breakdown.nightMinutes,
         nightAmount: breakdown.nightPremiumAmount,
+        overtimeMinutes: breakdown.overtimeMinutes,
+        overtimeAmount: breakdown.overtimePremiumAmount,
         incentive: inc,
         note: payrollNote || null,
       }),
@@ -170,7 +172,7 @@ export default function RecordsPage() {
 
   const selectedEmployee = employees.find(e => String(e.id) === filterEmployee) ?? null;
   const breakdown = selectedEmployee?.hourlyWage
-    ? calcPayrollBreakdown(records, selectedEmployee.hourlyWage, selectedEmployee.nightShiftEnabled)
+    ? calcPayrollBreakdown(records, selectedEmployee.hourlyWage, selectedEmployee.nightShiftEnabled, selectedEmployee.overtimeEnabled)
     : null;
   const totalMins = breakdown?.netMinutes ?? records.reduce((sum, r) => sum + calcNetMins(r), 0);
   const totalAmount = breakdown ? breakdown.totalBeforeIncentive + (Number(incentive) || 0) : null;
@@ -250,12 +252,24 @@ export default function RecordsPage() {
               </div>
             </div>
           </div>
-          {breakdown && breakdown.nightMinutes > 0 && (
-            <div className="bg-purple-50 rounded-lg p-3 mb-3 text-sm">
-              <span className="font-medium text-purple-700">深夜割増内訳：</span>
-              <span className="text-purple-600 ml-2">
-                通常 {fmtMins(breakdown.normalMinutes)} / 深夜 {fmtMins(breakdown.nightMinutes)}（+¥{breakdown.nightPremiumAmount.toLocaleString()}）
-              </span>
+          {breakdown && (breakdown.nightMinutes > 0 || breakdown.overtimeMinutes > 0) && (
+            <div className="space-y-1 mb-3">
+              {breakdown.nightMinutes > 0 && (
+                <div className="bg-purple-50 rounded-lg px-3 py-2 text-sm">
+                  <span className="font-medium text-purple-700">深夜割増：</span>
+                  <span className="text-purple-600 ml-2">
+                    {fmtMins(breakdown.nightMinutes)} × +25% ＝ +¥{breakdown.nightPremiumAmount.toLocaleString()}
+                  </span>
+                </div>
+              )}
+              {breakdown.overtimeMinutes > 0 && (
+                <div className="bg-orange-50 rounded-lg px-3 py-2 text-sm">
+                  <span className="font-medium text-orange-700">残業割増：</span>
+                  <span className="text-orange-600 ml-2">
+                    {fmtMins(breakdown.overtimeMinutes)} × +25% ＝ +¥{breakdown.overtimePremiumAmount.toLocaleString()}
+                  </span>
+                </div>
+              )}
             </div>
           )}
           {selectedEmployee.hourlyWage ? (

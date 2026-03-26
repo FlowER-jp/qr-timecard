@@ -8,6 +8,7 @@ type Employee = {
   name: string;
   hourlyWage: number | null;
   nightShiftEnabled: boolean;
+  overtimeEnabled: boolean;
   isActive: boolean;
   createdAt: string;
 };
@@ -17,7 +18,7 @@ export default function EmployeesPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState<Employee | null>(null);
-  const [form, setForm] = useState({ employeeCode: "", name: "", pin: "", hourlyWage: "", nightShiftEnabled: false });
+  const [form, setForm] = useState({ employeeCode: "", name: "", pin: "", hourlyWage: "", nightShiftEnabled: false, overtimeEnabled: false });
   const [error, setError] = useState("");
 
   const fetchEmployees = async () => {
@@ -39,7 +40,7 @@ export default function EmployeesPage() {
     });
     const data = await res.json();
     if (!res.ok) { setError(data.error); return; }
-    setForm({ employeeCode: "", name: "", pin: "", hourlyWage: "", nightShiftEnabled: false });
+    setForm({ employeeCode: "", name: "", pin: "", hourlyWage: "", nightShiftEnabled: false, overtimeEnabled: false });
     setShowForm(false);
     fetchEmployees();
   };
@@ -48,7 +49,7 @@ export default function EmployeesPage() {
     e.preventDefault();
     if (!editTarget) return;
     setError("");
-    const payload: Record<string, unknown> = { name: form.name, hourlyWage: form.hourlyWage || null, nightShiftEnabled: form.nightShiftEnabled };
+    const payload: Record<string, unknown> = { name: form.name, hourlyWage: form.hourlyWage || null, nightShiftEnabled: form.nightShiftEnabled, overtimeEnabled: form.overtimeEnabled };
     if (form.pin) payload.pin = form.pin;
     const res = await fetch(`/api/admin/employees/${editTarget.id}`, {
       method: "PUT",
@@ -83,7 +84,7 @@ export default function EmployeesPage() {
 
   const openEdit = (emp: Employee) => {
     setEditTarget(emp);
-    setForm({ employeeCode: emp.employeeCode, name: emp.name, pin: "", hourlyWage: emp.hourlyWage?.toString() ?? "", nightShiftEnabled: emp.nightShiftEnabled });
+    setForm({ employeeCode: emp.employeeCode, name: emp.name, pin: "", hourlyWage: emp.hourlyWage?.toString() ?? "", nightShiftEnabled: emp.nightShiftEnabled, overtimeEnabled: emp.overtimeEnabled });
     setError("");
   };
 
@@ -94,7 +95,7 @@ export default function EmployeesPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold text-gray-800">従業員管理</h1>
         <button
-          onClick={() => { setShowForm(true); setForm({ employeeCode: "", name: "", pin: "", hourlyWage: "", nightShiftEnabled: false }); setError(""); }}
+          onClick={() => { setShowForm(true); setForm({ employeeCode: "", name: "", pin: "", hourlyWage: "", nightShiftEnabled: false, overtimeEnabled: false }); setError(""); }}
           className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition"
         >
           + 従業員追加
@@ -147,15 +148,25 @@ export default function EmployeesPage() {
                 className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
               />
             </div>
-            <div className="col-span-4 flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="create-night"
-                checked={form.nightShiftEnabled}
-                onChange={(e) => setForm({ ...form, nightShiftEnabled: e.target.checked })}
-                className="w-4 h-4 rounded"
-              />
-              <label htmlFor="create-night" className="text-sm text-gray-600">深夜割増あり（22:00〜05:00 +25%）</label>
+            <div className="col-span-4 flex flex-wrap items-center gap-4">
+              <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.nightShiftEnabled}
+                  onChange={(e) => setForm({ ...form, nightShiftEnabled: e.target.checked })}
+                  className="w-4 h-4 rounded"
+                />
+                深夜割増あり（22:00〜05:00 +25%）
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.overtimeEnabled}
+                  onChange={(e) => setForm({ ...form, overtimeEnabled: e.target.checked })}
+                  className="w-4 h-4 rounded"
+                />
+                残業割増あり（8時間超 +25%）
+              </label>
             </div>
             {error && <p className="col-span-4 text-red-500 text-sm">{error}</p>}
             <div className="col-span-4 flex gap-2">
@@ -204,15 +215,25 @@ export default function EmployeesPage() {
                 className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
               />
             </div>
-            <div className="col-span-4 flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="edit-night"
-                checked={form.nightShiftEnabled}
-                onChange={(e) => setForm({ ...form, nightShiftEnabled: e.target.checked })}
-                className="w-4 h-4 rounded"
-              />
-              <label htmlFor="edit-night" className="text-sm text-gray-600">深夜割増あり（22:00〜05:00 +25%）</label>
+            <div className="col-span-4 flex flex-wrap items-center gap-4">
+              <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.nightShiftEnabled}
+                  onChange={(e) => setForm({ ...form, nightShiftEnabled: e.target.checked })}
+                  className="w-4 h-4 rounded"
+                />
+                深夜割増あり（22:00〜05:00 +25%）
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.overtimeEnabled}
+                  onChange={(e) => setForm({ ...form, overtimeEnabled: e.target.checked })}
+                  className="w-4 h-4 rounded"
+                />
+                残業割増あり（8時間超 +25%）
+              </label>
             </div>
             {error && <p className="col-span-4 text-red-500 text-sm">{error}</p>}
             <div className="col-span-4 flex gap-2">
@@ -232,6 +253,7 @@ export default function EmployeesPage() {
               <th className="px-4 py-3 text-left">氏名</th>
               <th className="px-4 py-3 text-left">時給</th>
               <th className="px-4 py-3 text-left">深夜割増</th>
+              <th className="px-4 py-3 text-left">残業割増</th>
               <th className="px-4 py-3 text-left">状態</th>
               <th className="px-4 py-3 text-right">操作</th>
             </tr>
@@ -244,6 +266,9 @@ export default function EmployeesPage() {
                 <td className="px-4 py-3 text-sm text-gray-600">{emp.hourlyWage ? `¥${emp.hourlyWage.toLocaleString()}` : "-"}</td>
                 <td className="px-4 py-3 text-sm">
                   {emp.nightShiftEnabled ? <span className="text-purple-600 font-medium">あり</span> : <span className="text-gray-300">-</span>}
+                </td>
+                <td className="px-4 py-3 text-sm">
+                  {emp.overtimeEnabled ? <span className="text-orange-600 font-medium">あり</span> : <span className="text-gray-300">-</span>}
                 </td>
                 <td className="px-4 py-3">
                   <span className={`px-2 py-0.5 rounded-full text-xs ${emp.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
