@@ -356,116 +356,142 @@ export default function RecordsPage() {
       {/* 勤怠レコード */}
       {loading ? (
         <p className="text-center text-gray-400">読み込み中...</p>
+      ) : records.length === 0 ? (
+        <p className="text-center text-gray-400 py-8">該当するレコードがありません</p>
       ) : (
-        <div className="space-y-2">
-          {records.map((record) => (
-            <div key={record.id} className="bg-white rounded-xl shadow overflow-hidden">
-              {editId === record.id ? (
-                <div className="p-4">
-                  <p className="text-xs font-bold text-gray-500 mb-3">{record.date} — {record.employee.name}</p>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 mb-3">
-                    <div>
-                      <label className="block text-xs text-gray-600 mb-1">出勤時刻</label>
-                      <input type="time" value={editForm.clockInTime}
-                        onChange={e => setEditForm(f => ({ ...f, clockInTime: e.target.value }))}
-                        className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-600 mb-1">退勤時刻</label>
-                      <input type="time" value={editForm.clockOutTime}
-                        onChange={e => setEditForm(f => ({ ...f, clockOutTime: e.target.value }))}
-                        className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-600 mb-1">休憩（分）</label>
-                      <input type="number" value={editForm.breakMinutes}
-                        onChange={e => setEditForm(f => ({ ...f, breakMinutes: e.target.value }))}
-                        className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-600 mb-1">修正理由</label>
-                      <input value={editForm.reason}
-                        onChange={e => setEditForm(f => ({ ...f, reason: e.target.value }))}
-                        placeholder="任意"
-                        className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
-                    </div>
-                  </div>
-                  <div className="mb-3">
-                    <label className="block text-xs text-gray-600 mb-1">日報</label>
-                    <input value={editForm.dailyReport}
-                      onChange={e => setEditForm(f => ({ ...f, dailyReport: e.target.value }))}
-                      className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
-                  </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => handleEditSubmit(record.id)} disabled={editLoading}
-                      className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 disabled:opacity-50">
-                      {editLoading ? "保存中..." : "保存"}
-                    </button>
-                    <button onClick={() => setEditId(null)}
-                      className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200">
-                      キャンセル
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3 px-4 py-3 flex-wrap">
-                  <div className="text-sm text-gray-500 w-24 shrink-0">{record.date}</div>
-                  {!filterEmployee && <div className="font-medium text-gray-800 w-24 shrink-0">{record.employee.name}</div>}
-                  <div className="text-sm text-gray-600 flex gap-3 flex-wrap">
-                    <span>出勤: {formatTime(record.clockIn)}</span>
-                    <span>退勤: {formatTime(record.clockOut)}</span>
-                    <span>休憩: {record.breakMinutes}分</span>
-                    <span className="font-medium text-blue-600">実働: {fmtMins(calcNetMins(record))}</span>
-                  </div>
-                  {record.dailyReport && (
-                    <div className="text-xs text-gray-400 truncate max-w-xs" title={record.dailyReport}>
-                      📝 {record.dailyReport}
-                    </div>
-                  )}
-                  <div className="ml-auto flex items-center gap-2">
-                    {record.corrections.length > 0 && (
-                      <button
-                        onClick={() => setExpandedCorrections(prev =>
-                          prev.includes(record.id) ? prev.filter(x => x !== record.id) : [...prev, record.id]
-                        )}
-                        className="text-xs text-orange-500 bg-orange-50 px-2 py-1 rounded-lg hover:bg-orange-100"
-                      >
-                        修正履歴 ({record.corrections.length})
-                      </button>
+        <div className="bg-white rounded-xl shadow overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="bg-gray-50 border-b text-xs text-gray-500 text-left">
+                <th className="px-3 py-2 font-medium whitespace-nowrap">日付</th>
+                {!filterEmployee && <th className="px-3 py-2 font-medium">従業員</th>}
+                <th className="px-3 py-2 font-medium text-center">出勤</th>
+                <th className="px-3 py-2 font-medium text-center">退勤</th>
+                <th className="px-3 py-2 font-medium text-center">休憩</th>
+                <th className="px-3 py-2 font-medium text-center">実働</th>
+                <th className="px-3 py-2 font-medium">日報</th>
+                <th className="px-3 py-2 font-medium text-center">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {records.map((record) => (
+                <>
+                  <tr
+                    key={record.id}
+                    className={`border-b last:border-b-0 hover:bg-gray-50 transition-colors ${editId === record.id ? "bg-blue-50" : ""}`}
+                  >
+                    <td className="px-3 py-2 whitespace-nowrap text-gray-600">{record.date}</td>
+                    {!filterEmployee && (
+                      <td className="px-3 py-2 font-medium text-gray-800 whitespace-nowrap">{record.employee.name}</td>
                     )}
-                    <button onClick={() => openEdit(record)}
-                      className="text-xs text-blue-500 bg-blue-50 px-2 py-1 rounded-lg hover:bg-blue-100">
-                      編集
-                    </button>
-                  </div>
-                </div>
-              )}
-              {expandedCorrections.includes(record.id) && editId !== record.id && (
-                <div className="border-t bg-orange-50 px-4 py-3">
-                  <p className="text-xs font-bold text-orange-600 mb-2">修正履歴</p>
-                  <div className="space-y-2">
-                    {record.corrections.map((c) => (
-                      <div key={c.id} className="text-xs text-gray-600">
-                        <span className="text-gray-400">{new Date(c.correctedAt).toLocaleString("ja-JP")}</span>
-                        {" | "}
-                        <span className="line-through text-red-400">
-                          {formatTime(c.prevClockIn)} → {formatTime(c.prevClockOut)} (休{c.prevBreakMinutes}分)
-                        </span>
-                        {" → "}
-                        <span className="text-green-600">
-                          {formatTime(c.newClockIn)} → {formatTime(c.newClockOut)} (休{c.newBreakMinutes}分)
-                        </span>
-                        {c.reason && <span className="ml-2 text-gray-500">理由: {c.reason}</span>}
+                    <td className="px-3 py-2 text-center tabular-nums text-gray-700">{formatTime(record.clockIn)}</td>
+                    <td className="px-3 py-2 text-center tabular-nums text-gray-700">{formatTime(record.clockOut)}</td>
+                    <td className="px-3 py-2 text-center text-gray-500">{record.breakMinutes > 0 ? `${record.breakMinutes}m` : "-"}</td>
+                    <td className="px-3 py-2 text-center font-semibold text-blue-600 tabular-nums">{fmtMins(calcNetMins(record))}</td>
+                    <td className="px-3 py-2 text-gray-400 text-xs max-w-xs truncate">
+                      {record.dailyReport || ""}
+                    </td>
+                    <td className="px-3 py-2 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1">
+                        {record.corrections.length > 0 && (
+                          <button
+                            onClick={() => setExpandedCorrections(prev =>
+                              prev.includes(record.id) ? prev.filter(x => x !== record.id) : [...prev, record.id]
+                            )}
+                            className="text-xs text-orange-500 bg-orange-50 px-2 py-1 rounded hover:bg-orange-100"
+                          >
+                            履歴{record.corrections.length}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => editId === record.id ? setEditId(null) : openEdit(record)}
+                          className={`text-xs px-2 py-1 rounded ${editId === record.id ? "bg-gray-200 text-gray-600 hover:bg-gray-300" : "bg-blue-50 text-blue-500 hover:bg-blue-100"}`}
+                        >
+                          {editId === record.id ? "閉じる" : "編集"}
+                        </button>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-          {records.length === 0 && (
-            <p className="text-center text-gray-400 py-8">該当するレコードがありません</p>
-          )}
+                    </td>
+                  </tr>
+
+                  {/* インライン編集行 */}
+                  {editId === record.id && (
+                    <tr key={`edit-${record.id}`} className="bg-blue-50 border-b">
+                      <td colSpan={filterEmployee ? 7 : 8} className="px-4 py-3">
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 mb-3">
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">出勤時刻</label>
+                            <input type="time" value={editForm.clockInTime}
+                              onChange={e => setEditForm(f => ({ ...f, clockInTime: e.target.value }))}
+                              className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">退勤時刻</label>
+                            <input type="time" value={editForm.clockOutTime}
+                              onChange={e => setEditForm(f => ({ ...f, clockOutTime: e.target.value }))}
+                              className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">休憩（分）</label>
+                            <input type="number" value={editForm.breakMinutes}
+                              onChange={e => setEditForm(f => ({ ...f, breakMinutes: e.target.value }))}
+                              className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">修正理由</label>
+                            <input value={editForm.reason}
+                              onChange={e => setEditForm(f => ({ ...f, reason: e.target.value }))}
+                              placeholder="任意"
+                              className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                          </div>
+                        </div>
+                        <div className="mb-3">
+                          <label className="block text-xs text-gray-600 mb-1">日報</label>
+                          <input value={editForm.dailyReport}
+                            onChange={e => setEditForm(f => ({ ...f, dailyReport: e.target.value }))}
+                            className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => handleEditSubmit(record.id)} disabled={editLoading}
+                            className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 disabled:opacity-50">
+                            {editLoading ? "保存中..." : "保存"}
+                          </button>
+                          <button onClick={() => setEditId(null)}
+                            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200">
+                            キャンセル
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+
+                  {/* 修正履歴行 */}
+                  {expandedCorrections.includes(record.id) && editId !== record.id && (
+                    <tr key={`corrections-${record.id}`} className="bg-orange-50 border-b">
+                      <td colSpan={filterEmployee ? 7 : 8} className="px-4 py-3">
+                        <p className="text-xs font-bold text-orange-600 mb-2">修正履歴</p>
+                        <div className="space-y-1">
+                          {record.corrections.map((c) => (
+                            <div key={c.id} className="text-xs text-gray-600">
+                              <span className="text-gray-400">{new Date(c.correctedAt).toLocaleString("ja-JP")}</span>
+                              {" | "}
+                              <span className="line-through text-red-400">
+                                {formatTime(c.prevClockIn)} → {formatTime(c.prevClockOut)} (休{c.prevBreakMinutes}分)
+                              </span>
+                              {" → "}
+                              <span className="text-green-600">
+                                {formatTime(c.newClockIn)} → {formatTime(c.newClockOut)} (休{c.newBreakMinutes}分)
+                              </span>
+                              {c.reason && <span className="ml-2 text-gray-500">理由: {c.reason}</span>}
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

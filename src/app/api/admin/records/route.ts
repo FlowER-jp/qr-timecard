@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
       employee: { select: { id: true, name: true, employeeCode: true } },
       corrections: { orderBy: { correctedAt: "desc" } },
     },
-    orderBy: [{ date: "desc" }, { employee: { employeeCode: "asc" } }],
+    orderBy: [{ date: "asc" }, { employee: { employeeCode: "asc" } }],
   });
 
   return NextResponse.json({ records });
