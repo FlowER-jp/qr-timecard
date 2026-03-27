@@ -136,7 +136,7 @@ export default function EmployeesPage() {
                 type="password"
                 value={form.pin}
                 onChange={(e) => setForm({ ...form, pin: e.target.value })}
-                placeholder="****"
+                placeholder="英数字8文字以上"
                 className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
                 required
               />

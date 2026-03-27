@@ -44,8 +44,8 @@ export async function PUT(
   if (nightShiftEnabled !== undefined) data.nightShiftEnabled = !!nightShiftEnabled;
   if (overtimeEnabled !== undefined) data.overtimeEnabled = !!overtimeEnabled;
   if (pin) {
-    if (pin.length < 4) {
-      return NextResponse.json({ error: "PINは4桁以上で設定してください" }, { status: 400 });
+    if (pin.length < 8) {
+      return NextResponse.json({ error: "PINは英数字8文字以上で設定してください" }, { status: 400 });
     }
     data.pin = await bcrypt.hash(pin, 10);
   }

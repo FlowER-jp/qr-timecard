@@ -37,8 +37,8 @@ export async function POST(req: NextRequest) {
     if (!employeeCode || !name || !pin) {
       return NextResponse.json({ error: "必須項目が不足しています" }, { status: 400 });
     }
-    if (pin.length < 4) {
-      return NextResponse.json({ error: "PINは4桁以上で設定してください" }, { status: 400 });
+    if (pin.length < 8) {
+      return NextResponse.json({ error: "PINは英数字8文字以上で設定してください" }, { status: 400 });
     }
 
     const existing = await prisma.employee.findUnique({ where: { employeeCode } });

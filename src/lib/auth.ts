@@ -1,9 +1,8 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const secret = new TextEncoder().encode(
-  process.env.JWT_SECRET || "fallback-secret"
-);
+if (!process.env.JWT_SECRET) throw new Error("JWT_SECRET is not set");
+const secret = new TextEncoder().encode(process.env.JWT_SECRET);
 
 export type AdminPayload = { role: "admin"; adminId: number; username: string };
 export type EmployeePayload = {
